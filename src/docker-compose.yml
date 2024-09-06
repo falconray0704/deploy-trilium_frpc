@@ -1,0 +1,38 @@
+version: '3.6'
+services:
+  trilium_app:
+    image: "zadam/trilium:${TRILIUM_RELEASE_VERSION:-0.63.7}"
+    container_name: "${SERVER_NAME}_app"
+    restart: unless-stopped
+    environment:
+      - TRILIUM_DATA_DIR=/home/node/trilium-data
+    networks:
+      - frpc_trilium
+    volumes:
+      - ${INSTALL_ROOT_PATH}/${SERVER_NAME}/${TRILIUM_DATAS_DIR:-./trilium-data}:/home/node/trilium-data
+
+
+  frpc:
+    image: "rayruan/amd64_frp:${FRP_IMAGE_TAG:-0.60.0}"
+    container_name: "${SERVER_NAME}"
+    depends_on:
+    - trilium_app
+    environment:
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - ${INSTALL_ROOT_PATH}/${SERVER_NAME}/${CFGS_DIR}/frpc.toml:/etc/frp/frpc.toml:ro
+      - ${INSTALL_ROOT_PATH}/${SERVER_NAME}/frpc_entrypoint.sh:/app/frpc_entrypoint.sh:ro
+      - ${INSTALL_ROOT_PATH}/${SERVER_NAME}/${CERTIFICATES_DIR}/client.crt:/client.crt:ro
+      - ${INSTALL_ROOT_PATH}/${SERVER_NAME}/${CERTIFICATES_DIR}/client.key:/client.key:ro
+      - ${INSTALL_ROOT_PATH}/${SERVER_NAME}/${CERTIFICATES_DIR}/rootCA.crt:/ca.crt:ro
+    networks:
+      - frpc_trilium
+    entrypoint: /app/frpc_entrypoint.sh
+    restart: always
+   
+networks:
+  frpc_trilium:
+    name: "${SERVER_NAME}"
